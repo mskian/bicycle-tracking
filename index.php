@@ -1,10 +1,66 @@
 <?php
 
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(0);
+
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', 1);
+
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 header('X-Content-Type-Options: nosniff');
 header('Strict-Transport-Security: max-age=63072000');
 header('X-Robots-Tag: noindex, nofollow', true);
+
+$error = "";
+$apiKey = "";
+
+define('API_KEY', '<REPLACE WITH AUTH KEY>');
+
+if (!isset($_SESSION['form_enabled'])) {
+    $_SESSION['form_enabled'] = false;
+}
+$isFormSubmitted = isset($_POST['submit_button']); 
+
+function sanitize_input($data) {
+    return htmlspecialchars(trim($data), ENT_QUOTES | ENT_HTML5);
+}
+
+function generate_csrf_token() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+$_SESSION['csrf_token'] = generate_csrf_token();
+
+function verify_csrf_token($token) {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+if ($isFormSubmitted) {
+    if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+        $error = "CSRF token verification failed. Action aborted.";
+    } else {
+        $apiKey = sanitize_input($_POST['api_key']);
+
+        if (empty($apiKey)) {
+            $error = "API Key is required";
+        } else {
+            $validApiKey = API_KEY;
+            if ($apiKey === $validApiKey) {
+                $_SESSION['form_enabled'] = true;
+            } else {
+                $error = "Invalid API Key";
+            }
+        }
+    }
+}
 
 ?>
 
@@ -112,71 +168,100 @@ header('X-Robots-Tag: noindex, nofollow', true);
 <body>
 
 <section class="section">
-    <div class="container">
-        <div id="quote-card" class="card">
-            <div class="card-content">
-                <div id="quote-container">
-                    <hr>
-                    <h1 class="title is-size-5">🚴 Ride Tracker</h1>
-                    <br>
-                    <form id="rideForm">
-                        <div class="field">
-                            <label class="label">Ride Name</label>
-                            <div class="control">
-                                <input class="input is-rounded" type="text" id="rideName" placeholder="Enter ride name">
-                            </div>
-                            <p class="help is-danger error" id="rideNameError">Ride name is required</p>
-                        </div>
-                        <div class="field">
-                            <label class="label">Distance (km)</label>
-                            <div class="control">
-                                <input class="input is-rounded" type="number" step="any" id="rideDistance" placeholder="Enter distance in km" min="0" step="0.01">
-                            </div>
-                            <p class="help is-danger error" id="rideDistanceError">Distance must be a number EX: 7 or 7.25</p>
-                        </div>
-
-                        <div class="field">
-                            <label class="label">Date</label>
-                            <div class="control">
-                                <input class="input is-rounded" type="date" id="rideDate">
-                            </div>
-                            <p class="help is-danger error" id="rideDateError">Date is required</p>
-                        </div>
-
-                        <div class="control">
-                            <button class="button is-link is-rounded btn-box" type="submit">Add Ride</button>
-                        </div>
-                    </form>
-                    <hr>
-                    <div class="notification is-success" id="successMessage" style="display: none;">
-                    </div>
-                </div>
-
-                <div class="notification is-danger" id="emptydata" style="display: none;">
-                </div>
-
-                <div id="ridesList" style="display: none;">
-                    <h2 class="title is-size-5">🚴 Rides</h2>
-                    <br>
-                    <ul id="rides">
-                    </ul>
-                    <nav class="pagination" role="navigation" aria-label="pagination">
-                        <button class="button pagination-previous" id="prevPage">Previous</button>
-                        <button class="button pagination-next" id="nextPage">Next</button>
-                    </nav>
-                    <br>
-                    <div id="totalRideDistance"></div>
-                    <br>
-                    <canvas id="myChart" width="400" height="400"></canvas>
-                    <hr>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="container">
+<div id="quote-card" class="card">
+<div class="card-content">
+<div id="quote-container">
+<?php if (!$_SESSION['form_enabled']): ?>
+<form method="POST" action="/">
+<input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+<div class="field">
+<label for="api_key" class="label">Auth Key:</label>
+<div class="control">
+<input type="password" class="input" id="api_key" name="api_key" value="<?= htmlspecialchars($apiKey); ?>" autocomplete="current-password">
+</div>
+</div>
+<?php if (!empty($error)): ?>
+<div class="notification is-danger"><button class="delete" onclick="this.parentNode.remove();"></button><P><?= $error; ?></P></span></div>
+<?php endif; ?>
+<div class="field">
+<div class="control">
+<input type="submit" class="button is-warning" name="submit_button" value="Submit">
+</div>
+</div>
+</form>
+<?php if (!empty($errors)): ?>
+<div class="notification is-danger">
+<button class="delete" onclick="this.parentNode.remove();"></button>
+<?php foreach ($errors as $error): ?>
+<p><?php echo $error; ?></p>
+<?php endforeach; ?>
+</div>
+<?php endif; ?>
+</div>
+</div>
+</div>
+</div>
+</section>
+<?php else: ?>
+<hr>
+<h1 class="title is-size-5">🚴 Ride Tracker</h1>
+<br>
+<form id="rideForm">
+<div class="field">
+<label class="label">Ride Name</label>
+<div class="control">
+<input class="input is-rounded" type="text" id="rideName" placeholder="Enter ride name">
+</div>
+<p class="help is-danger error" id="rideNameError">Ride name is required</p>
+</div>
+<div class="field">
+<label class="label">Distance (km)</label>
+<div class="control">
+<input class="input is-rounded" type="number" step="any" id="rideDistance" placeholder="Enter distance in km" min="0" step="0.01">
+</div>
+<p class="help is-danger error" id="rideDistanceError">Distance must be a number EX: 7 or 7.25</p>
+</div>
+<div class="field">
+<label class="label">Date</label>
+<div class="control">
+<input class="input is-rounded" type="date" id="rideDate">
+</div>
+<p class="help is-danger error" id="rideDateError">Date is required</p>
+</div>
+<div class="control">
+<button class="button is-link is-rounded btn-box" type="submit">Add Ride</button>
+</div>
+</form>
+<hr>
+<div class="notification is-success" id="successMessage" style="display: none;">
+</div>
+</div>
+<div class="notification is-danger" id="emptydata" style="display: none;">
+</div>
+<div id="ridesList" style="display: none;">
+<h2 class="title is-size-5">🚴 Rides</h2>
+<br>
+<ul id="rides">
+</ul>
+<nav class="pagination" role="navigation" aria-label="pagination">
+<button class="button pagination-previous" id="prevPage">Previous</button>
+<button class="button pagination-next" id="nextPage">Next</button>
+</nav>
+<br>
+<div id="totalRideDistance"></div>
+<br>
+<canvas id="myChart" width="400" height="400"></canvas>
+<hr>
+</div>
+</div>
+</div>
+</div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha512-NqRhTU0DQNHNUO0pTx6zPLJ11YhOqj4MRcvv0+amxJk+re07ykGhFuhMmrQpfTRAUx8nQ4EcMuX/m8cz2K8vIQ==" crossorigin="anonymous"></script>
 <script src="script.js"></script>
+<?php endif; ?>
 
 </body>
 </html>
