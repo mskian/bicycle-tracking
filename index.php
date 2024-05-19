@@ -1,3 +1,13 @@
+<?php
+
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('X-Content-Type-Options: nosniff');
+header('Strict-Transport-Security: max-age=63072000');
+header('X-Robots-Tag: noindex, nofollow', true);
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,83 +17,96 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#c7ecee">
 <link rel="shortcut icon" href="data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABqklEQVQ4jZ2Tv0scURDHP7P7SGWh14mkuXJZEH8cgqUWcklAsLBbCEEJSprkD7hD/4BUISHEkMBBiivs5LhCwRQBuWgQji2vT7NeYeF7GxwLd7nl4knMwMDMfL8z876P94TMLt+8D0U0EggQSsAjwMvga8ChJAqxqjTG3m53AQTg4tXHDRH9ABj+zf6oytbEu5d78nvzcyiivx7QXBwy46XOi5z1jbM+Be+nqVfP8yzuD3FM6rzIs9YE1hqGvDf15cVunmdx7w5eYJw1pcGptC9CD4gBUuef5Ujq/BhAlTLIeFYuyfmTZgeYv+2nPt1a371P+Hm1WUPYydKf0lnePwVmh3hnlcO1uc7yvgJUDtdG8oy98kduK2KjeHI0fzCQINSXOk/vlXBUOaihAwnGWd8V5r1uhe1VIK52V6JW2D4FqHZX5lphuwEE7ooyaN7gjLMmKSwYL+pMnV+MA/6+g8RYa2Lg2RBQbj4+rll7uymLy3coiuXb5PdQVf7rKYvojAB8Lf3YUJUHfSYR3XqeLO5JXvk0dhKqSqQQoCO+s5AIxCLa2Lxc6ALcAPwS26XFskWbAAAAAElFTkSuQmCC" />
+<?php $current_page = "https://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]"; echo '<link rel="canonical" href="'.$current_page.'" />'; ?>
+
 
     <title>Bicycle Ride Tracker 🚴</title>
     <meta name="description" content="Bicycle Ride Tracker - Add Ride Name, Distance and Km 🚴."/>
 
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css" integrity="sha512-IgmDkwzs96t4SrChW29No3NXBIBv8baW490zk5aXvhCD8vuZM3yUSkbyTBcXohkySecyzIrUwiF/qV0cuPcL3Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
 
-    <style>
-        html, body {
-            background-color: #FDA7DF;
-            padding-bottom: 20px;
-        }
-        body {
-            font-family: "Roboto Mono", monospace;
-            font-weight: 600;
-            line-height: 1.6;
-            word-wrap: break-word;
-            -moz-osx-font-smoothing: grayscale;
-           -webkit-font-smoothing: antialiased !important;
-           -moz-font-smoothing: antialiased !important;
-            text-rendering: optimizelegibility !important;
-        }
-        #quote-container {
-            margin: 10px auto;
-            border-radius: 10px;
-            padding: 20px;
-            background-color: #fff;
-            font-family: "Roboto Mono", monospace;
-        }
-        #quote {
-            font-family: "Roboto Mono", monospace;
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        #author {
-            font-family: "Roboto Mono", monospace;
-            font-style: italic;
-            color: #777;
-        }
-        #image-container {
-            margin-top: 20px;
-        }
-        #quote-card {
-            max-width: 800px;
-            margin: 10px auto;
-            font-family: "Roboto Mono", monospace;
-        }
-        .error {
-            font-family: "Roboto Mono", monospace;
-            display: none;
-        }
-        input, button {
-            font-family: "Roboto Mono", monospace;
-        }
-        .pagination-previous, .pagination-next {
-            border-radius: 25px;
-            background-color: #FDA7DF;
-            margin-right: 10px;
-        }
-        .btn-box {
-            font-weight: 600;
-            font-size: 14px;
-            font-family: "Roboto Mono", monospace;
-            text-transform: uppercase;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            border-radius: 32px;
-            padding: 10px 20px;
-            -moz-osx-font-smoothing: grayscale;
-            -webkit-font-smoothing: antialiased !important;
-            -moz-font-smoothing: antialiased !important;
-            text-rendering: optimizelegibility !important;
-        }
-    </style>
+<style>
+    html, body {
+        background-color: #FDA7DF;
+        padding-bottom: 20px;
+    }
+    body {
+        font-family: "Roboto Mono", monospace;
+        font-weight: 600;
+        line-height: 1.6;
+        word-wrap: break-word;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-font-smoothing: antialiased !important;
+        text-rendering: optimizelegibility !important;
+    }
+    #quote-container {
+        margin: 10px auto;
+        border-radius: 10px;
+        padding: 20px;
+        background-color: #fff;
+        font-family: "Roboto Mono", monospace;
+    }
+    #quote {
+        font-family: "Roboto Mono", monospace;
+        font-size: 20px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+    #author {
+        font-family: "Roboto Mono", monospace;
+        font-style: italic;
+        color: #777;
+    }
+    #image-container {
+        margin-top: 20px;
+    }
+    #quote-card {
+        max-width: 800px;
+        margin: 10px auto;
+        font-family: "Roboto Mono", monospace;
+    }
+    .error {
+        font-family: "Roboto Mono", monospace;
+        display: none;
+    }
+    input, button {
+        font-family: "Roboto Mono", monospace;
+    }
+    .pagination-previous, .pagination-next {
+        border-radius: 25px;
+        background-color: #b71540;
+        color: #ffffff;
+        margin-right: 10px;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .pagination-previous:hover, .pagination-next:hover {
+        background-color: #b71540;
+        color: #ffffff;
+    }
+    .pagination-previous:active, .pagination-next:active {
+        background-color: #b71540;
+        color: #ffffff;
+    }
+    .btn-box {
+        font-weight: 600;
+        font-size: 14px;
+        font-family: "Roboto Mono", monospace;
+        text-transform: uppercase;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        border-radius: 32px;
+        padding: 10px 20px;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-font-smoothing: antialiased !important;
+        -moz-font-smoothing: antialiased !important;
+        text-rendering: optimizelegibility !important;
+    }
+</style>
 
 </head>
 <body>
@@ -121,13 +144,15 @@
                         </div>
 
                         <div class="control">
-                            <button class="button is-danger is-rounded btn-box" type="submit">Add Ride</button>
+                            <button class="button is-link is-rounded btn-box" type="submit">Add Ride</button>
                         </div>
                     </form>
                     <hr>
                     <div class="notification is-success" id="successMessage" style="display: none;">
-                        Ride added successfully!
                     </div>
+                </div>
+
+                <div class="notification is-danger" id="emptydata" style="display: none;">
                 </div>
 
                 <div id="ridesList" style="display: none;">
@@ -142,6 +167,7 @@
                     <br>
                     <div id="totalRideDistance"></div>
                     <br>
+                    <canvas id="myChart" width="400" height="400"></canvas>
                     <hr>
                 </div>
             </div>
@@ -149,6 +175,7 @@
     </div>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha512-NqRhTU0DQNHNUO0pTx6zPLJ11YhOqj4MRcvv0+amxJk+re07ykGhFuhMmrQpfTRAUx8nQ4EcMuX/m8cz2K8vIQ==" crossorigin="anonymous"></script>
 <script src="script.js"></script>
 
 </body>
