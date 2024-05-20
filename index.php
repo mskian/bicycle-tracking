@@ -173,6 +173,9 @@ if ($isFormSubmitted) {
 <div class="card-content">
 <div id="quote-container">
 <?php if (!$_SESSION['form_enabled']): ?>
+<hr>
+<h1 class="title is-size-5">🚴 Ride Tracker</h1>
+<br>
 <form method="POST" action="/">
 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
 <div class="field">
