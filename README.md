@@ -6,27 +6,43 @@ Bicycle Ride Tracker - Add Ride Name, Distance and Km.
 - Bulma CSS
 - Javascript
 - Chart.js
-- PHP PDO for API and Store Users Ride data in Database
+- PHP PDO for API and Store Users Ride data into Database
 - MYSQL
 
-## Modification
+## Setup and Modification
 
-- Open `/api/` folder
-- Update your database details in `/api/config.php`
+- `/api/` folder
 - Copy the SQL Query from `query.sql` file and Create Table for users and Ride data
-- Add users Manually: **1 for approved and 0 Not approved**
-- open `index.php` Home page file and Add Auth Key to access the Form and data
-- Generate Strong Random Auth Key From - <https://proton.me/pass/password-generator>
+- Add API KEY and Database Details in `.env` file
 
-```php
-define('API_KEY', '<REPLACE WITH AUTH KEY>');
+```env
+APIKEY=xxxxxxxx
+DBHOST=localhost
+DBNAME=xxxxxxxxxx
+DBUSER=xxxxxxxxxxxx
+DBPASSWORD=xxxxxxxxxxxx
 ```
 
+- Register New user
+
+```sh
+curl --request POST \
+  --url http://localhost:6004/api/new.php \
+  --header 'Authorization: Bearer APIKEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+  "username": "username",
+  "password": "password"
+}
+'
+```
+
+- Approve users Manually from database : **1 for approved and 0 Not approved**
 - Done
 
 ## Access and Add data
 
-- View Ride Data and insert New Data using this URL format
+- Just Login and Start adding your Ride Data
 
 ```sh
 
@@ -34,7 +50,7 @@ define('API_KEY', '<REPLACE WITH AUTH KEY>');
 php -S localhost:6004
 
 ## Open URL
-http://localhost:6004/?username=santhosh
+http://localhost:6004/
 
 ```
 

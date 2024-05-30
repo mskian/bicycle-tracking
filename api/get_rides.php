@@ -1,6 +1,7 @@
 <?php
 
 include 'config.php';
+include 'session.php';
 
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
@@ -21,6 +22,8 @@ if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
     exit;
 }
 
+checkSession();
+
 try {
 
     $stmt = $pdo->prepare('SELECT approved FROM users WHERE username = :username');
@@ -33,7 +36,7 @@ try {
         exit;
     }
 
-    $stmt = $pdo->prepare('SELECT * FROM ride WHERE username = :username ORDER BY date DESC LIMIT 100');
+    $stmt = $pdo->prepare('SELECT * FROM ride WHERE username = :username ORDER BY id DESC LIMIT 100');
     $stmt->bindValue(':username', $username, PDO::PARAM_STR);
     $stmt->execute();
 

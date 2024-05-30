@@ -1,8 +1,22 @@
 <?php
 
-$dsn = 'mysql:host=localhost;dbname=<YOUR DB NAME>;charset=utf8mb4';
-$username = '<YOUR DB USER>';
-$password = '<YOUR DB PASSWORD>';
+include 'store.php';
+
+try {
+    (new DevCoder\DotEnv(__DIR__ . '/../.env'))->load();
+} catch (InvalidArgumentException $e) {
+    error_log($e->getMessage());
+    http_response_code(500);
+    echo json_encode(['message' => 'Environment configuration file not found']);
+    exit;
+}
+
+$host = getenv('DBHOST') ?: 'localhost';
+$dbname = getenv('DBNAME') ?: 'default_dbname';
+$dbuser = getenv('DBUSER') ?: 'default_user';
+$dbpassword = getenv('DBPASSWORD') ?: 'default_password';
+
+$dsn = sprintf('mysql:host=%s;dbname=%s;charset=utf8mb4', $host, $dbname);
 
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -11,9 +25,12 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $username, $password, $options);
+    $pdo = new PDO($dsn, $dbuser, $dbpassword, $options);
 } catch (\PDOException $e) {
-    throw new \PDOException($e->getMessage(), (int)$e->getCode());
+    error_log($e->getMessage());
+    http_response_code(500);
+    echo json_encode(['message' => 'Internal Server Error']);
+    exit;
 }
 
 ?>

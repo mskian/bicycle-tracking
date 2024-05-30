@@ -7,11 +7,11 @@ SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS `ride`;
 CREATE TABLE `ride` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `distance` float NOT NULL,
   `date` date NOT NULL,
-  `username` varchar(255) NOT NULL,
+  `username` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_username` (`username`),
   CONSTRAINT `fk_username` FOREIGN KEY (`username`) REFERENCES `users` (`username`)
@@ -20,9 +20,10 @@ CREATE TABLE `ride` (
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(255) NOT NULL,
-  `approved` tinyint(1) NOT NULL DEFAULT 0,
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approved` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

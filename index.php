@@ -1,5 +1,7 @@
 <?php
 
+include __DIR__ . '/./api/config.php';
+
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(0);
@@ -18,13 +20,11 @@ header('Strict-Transport-Security: max-age=63072000');
 header('X-Robots-Tag: noindex, nofollow', true);
 
 $error = "";
-$apiKey = "";
-
-define('API_KEY', '<REPLACE WITH AUTH KEY>');
 
 if (!isset($_SESSION['form_enabled'])) {
     $_SESSION['form_enabled'] = false;
 }
+
 $isFormSubmitted = isset($_POST['submit_button']); 
 
 function sanitize_input($data) {
@@ -35,28 +35,51 @@ function generate_csrf_token() {
     if (!isset($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
-    return $_SESSION['csrf_token'];
 }
-$_SESSION['csrf_token'] = generate_csrf_token();
+
+if (!isset($_SESSION['csrf_token'])) {
+    generate_csrf_token();
+}
 
 function verify_csrf_token($token) {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+function getUserHashedPassword($pdo, $username, $password) {
+    $query = 'SELECT password, approved FROM users WHERE username = :username';
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+    $stmt->execute();
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $hashed_password = $result['password'];
+    $approved = $result['approved'];
+    if ($hashed_password && password_verify($password, $hashed_password)) {
+        return $approved;
+    }
+    return false;
 }
 
 if ($isFormSubmitted) {
     if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
         $error = "CSRF token verification failed. Action aborted.";
     } else {
-        $apiKey = sanitize_input($_POST['api_key']);
+        $username = isset($_POST['username']) ? trim($_POST['username']) : '';
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
 
-        if (empty($apiKey)) {
-            $error = "API Key is required";
+        $username = sanitize_input($_POST['username']);
+
+        if (empty($password) || empty($username)) {
+            $error = "Username and password are required.";
         } else {
-            $validApiKey = API_KEY;
-            if ($apiKey === $validApiKey) {
+            $approved = getUserHashedPassword($pdo, $username, $password);
+            $_SESSION['username'] = $username;
+            if ($approved && $_SESSION['username']) {
+                header('Location: /');
                 $_SESSION['form_enabled'] = true;
+            } elseif ($approved === 0) {
+                $error = "Account not approved.";
             } else {
-                $error = "Invalid API Key";
+                $error = "Invalid username or password.";
             }
         }
     }
@@ -176,12 +199,18 @@ if ($isFormSubmitted) {
 <hr>
 <h1 class="title is-size-5">🚴 Ride Tracker</h1>
 <br>
-<form method="POST" action="/">
+<form method="POST">
 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
 <div class="field">
-<label for="api_key" class="label">Auth Key:</label>
+<label for="username" class="label">Username:</label>
 <div class="control">
-<input type="password" class="input" id="api_key" name="api_key" value="<?= htmlspecialchars($apiKey); ?>" autocomplete="current-password">
+<input type="text" class="input" id="username" name="username" autocomplete="username">
+</div>
+</div>
+<div class="field">
+<label for="password" class="label">Password:</label>
+<div class="control">
+<input type="password" class="input" id="password" name="password" autocomplete="current-password">
 </div>
 </div>
 <?php if (!empty($error)): ?>
@@ -208,7 +237,7 @@ if ($isFormSubmitted) {
 </section>
 <?php else: ?>
 <hr>
-<h1 class="title is-size-5">🚴 Ride Tracker</h1>
+<h1 class="title is-size-5">🚴 <?php echo htmlspecialchars($_SESSION['username']); ?></h1>
 <br>
 <form id="rideForm">
 <div class="field">
@@ -256,6 +285,11 @@ if ($isFormSubmitted) {
 <br>
 <canvas id="myChart" width="400" height="400"></canvas>
 <hr>
+<p>For Exit or Close the Data page - Check Log out Button</p><br>
+<div class="buttons is-centered">
+<button id="logoutButton" class="button is-danger is-rounded btn-box">Log out</button>
+</div>
+<hr>
 </div>
 </div>
 </div>
@@ -263,7 +297,278 @@ if ($isFormSubmitted) {
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha512-NqRhTU0DQNHNUO0pTx6zPLJ11YhOqj4MRcvv0+amxJk+re07ykGhFuhMmrQpfTRAUx8nQ4EcMuX/m8cz2K8vIQ==" crossorigin="anonymous"></script>
-<script src="script.js"></script>
+<script>
+
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('rideForm');
+    const rideName = document.getElementById('rideName');
+    const rideDistance = document.getElementById('rideDistance');
+    const rideDate = document.getElementById('rideDate');
+    const successMessage = document.getElementById('successMessage');
+    const totalRideDistance = document.getElementById('totalRideDistance');
+
+    const rideNameError = document.getElementById('rideNameError');
+    const rideDistanceError = document.getElementById('rideDistanceError');
+    const rideDateError = document.getElementById('rideDateError');
+    const emptyData = document.getElementById('emptydata');
+
+    const ridesList = document.getElementById('ridesList');
+    const ridesUl = document.getElementById('rides');
+    const prevPageButton = document.getElementById('prevPage');
+    const nextPageButton = document.getElementById('nextPage');
+
+    const ITEMS_PER_PAGE = 3;
+    let currentPage = 1;
+    let chartInstance;
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        rideNameError.style.display = 'none';
+        rideDistanceError.style.display = 'none';
+        rideDateError.style.display = 'none';
+        emptyData.style.display = 'none';
+
+        let isValid = true;
+
+        if (rideName.value.trim() === '') {
+            rideNameError.style.display = 'block';
+            isValid = false;
+        }
+
+        if (rideDistance.value <= 0 || isNaN(rideDistance.value)) {
+            rideDistanceError.style.display = 'block';
+            isValid = false;
+        }
+
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!datePattern.test(rideDate.value)) {
+            rideDateError.style.display = 'block';
+            isValid = false;
+        }
+
+        if (isValid) {
+            const ride = {
+                name: rideName.value.trim(),
+                distance: parseFloat(rideDistance.value),
+                date: rideDate.value,
+                username: '<?php echo $_SESSION['username']; ?>'
+            };
+
+            try {
+                await saveRide(ride);
+                await displayRides(ride.username);
+                await fetchDataAndCreateChart();
+                form.reset();
+            } catch (error) {
+                console.log('Error saving ride');
+            }
+        }
+    });
+
+    const saveRide = async (ride) => {
+        const response = await fetch('/api/save_ride.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(ride)
+        });
+        const result = await response.json();
+        successMessage.style.display = 'block';
+        successMessage.innerHTML = `<p>${result.message}</p>`
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 3000);
+        if (result.error) {
+            throw new Error(result.error);
+        }
+    };
+
+    const getRides = async (username = null) => {
+        let url = '/api/get_rides.php';
+        if (username) {
+            url += `?username=${encodeURIComponent(username)}`;
+        }
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error('Failed to fetch rides');
+            }
+            const rides = await response.json();
+            if (!Array.isArray(rides)) {
+                emptyData.style.display = 'block';
+                emptyData.innerHTML = `<p>${rides.message}</p>`
+                throw new Error('Received invalid data for rides');
+            }
+            return rides;
+        } catch (error) {
+            console.log('Error fetching rides');
+            return [];
+        }
+    };
+    
+    const displayRides = async (username) => {
+        const rides = await getRides(username);
+        const totalPages = Math.ceil(rides.length / ITEMS_PER_PAGE);
+
+        if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+        }
+
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const ridesToDisplay = rides.slice(startIndex, endIndex);
+
+        ridesUl.innerHTML = '';
+        if (ridesToDisplay.length > 0) {
+            ridesToDisplay.forEach((ride, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<p>✅ Ride ID: ${ride.id} 🌏 ${ride.name} ▶ ${ride.distance} km on <code>${ride.date}</code></p><hr>`;
+                ridesUl.appendChild(li);
+            });
+        } else {
+            ridesUl.innerHTML = '<p>No rides to display</p>';
+        }
+
+        ridesList.style.display = rides.length > 0 ? 'block' : 'none';
+        prevPageButton.disabled = currentPage === 1;
+        nextPageButton.disabled = currentPage === totalPages || totalPages === 0;
+
+        const totalDistance = rides.reduce((total, ride) => {
+            return total + (parseFloat(ride.distance) || 0);
+        }, 0);
+
+        totalRideDistance.textContent = `Total Distance: ${totalDistance.toFixed(2)} km`;
+    };
+
+    const prevPageHandler = async () => {
+        if (currentPage > 1) {
+            currentPage--;
+            await displayRides('<?php echo $_SESSION['username']; ?>');
+        }
+    };
+
+    const nextPageHandler = async () => {
+        const rides = await getRides('<?php echo $_SESSION['username']; ?>');
+        const totalPages = Math.ceil(rides.length / ITEMS_PER_PAGE);
+        if (currentPage < totalPages) {
+            currentPage++;
+            await displayRides('<?php echo $_SESSION['username']; ?>');
+        }
+    };
+
+    prevPageButton.addEventListener('click', prevPageHandler);
+    nextPageButton.addEventListener('click', nextPageHandler);
+
+    displayRides('<?php echo $_SESSION['username']; ?>');
+
+    function getUsernameFromQueryParam() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('username');
+    }
+
+    const fetchDataAndCreateChart = async () => {
+        try {
+            const data = await fetch('/api/get_rides.php?username=<?php echo $_SESSION['username']; ?>')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch data');
+                    }
+                    return response.json();
+                });
+    
+            const labels = data.map(ride => ride.date);
+            const distances = data.map(ride => ride.distance);
+    
+            const ctx = document.getElementById('myChart').getContext('2d');
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    axis: 'y',
+                    labels: labels,
+                    datasets: [{
+                        label: 'Distance Covered',
+                        data: distances,
+                        font: {
+                            family: 'Roboto Mono, monospace',
+                        }
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Distance Covered',
+                            font: {
+                                family: 'Roboto Mono, monospace',
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Ride Date',
+                                font: {
+                                    family: 'Roboto Mono, monospace',
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Distance (km)',
+                                font: {
+                                    family: 'Roboto Mono, monospace',
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.log('Chart: Error fetching data');
+        }
+    };
+    
+    fetchDataAndCreateChart();
+});
+document.addEventListener('DOMContentLoaded', function() {
+    const logoutButton = document.getElementById('logoutButton');
+
+    logoutButton.addEventListener('click', function() {
+        logout();
+    });
+});
+
+function logout() {
+    fetch('/logout.php', {
+        method: 'GET',
+
+    })
+    .then(response => {
+            return response.json();
+    })
+    .then(data => {
+        if (data.message) {
+            window.location.href = '/';
+        } else {
+            console.log(data.message);
+        }
+    })
+    .catch(error => {
+        console.log(error.message);
+    });
+}
+
+</script>
+
 <?php endif; ?>
 
 </body>
