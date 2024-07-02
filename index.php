@@ -276,6 +276,7 @@ if ($isFormSubmitted) {
 <br>
 <ul id="rides">
 </ul>
+<br>
 <nav class="pagination" role="navigation" aria-label="pagination">
 <button class="button pagination-previous" id="prevPage">Previous</button>
 <button class="button pagination-next" id="nextPage">Next</button>
@@ -385,6 +386,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const updateRide = async (ride) => {
+        const response = await fetch('/api/edit.php', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(ride)
+        });
+        const result = await response.json();
+        successMessage.style.display = 'block';
+        successMessage.innerHTML = `<p>${result.message}</p>`;
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 3000);
+        if (result.error) {
+            throw new Error(result.error);
+        }
+    };
+
     const getRides = async (username = null) => {
         let url = '/api/get_rides.php';
         if (username) {
@@ -424,8 +444,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ridesToDisplay.length > 0) {
             ridesToDisplay.forEach((ride, index) => {
                 const li = document.createElement('li');
-                li.innerHTML = `<p>✅ Ride ID: ${ride.id} 🌏 ${ride.name} ▶ ${ride.distance} km on <code>${ride.date}</code></p><hr>`;
+                li.innerHTML = `
+                    <br>
+                    <p><strong>Ride ID:</strong> ${ride.id} <br><br> 🌏 <span class="ride-name">${ride.name}</span> <br> 🚴‍♂️ 
+                    <span class="ride-distance">${ride.distance}</span> km <br>
+                    📆 <span class="tag is-warning ride-date">${ride.date}</span></p>
+                    <br><br>
+                    <button class="button is-info edit-btn is-small" data-id="${ride.id}">Edit</button>
+                    <hr>`;
                 ridesUl.appendChild(li);
+            });
+            ridesUl.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const rideId = event.target.dataset.id;
+                    const rideName = event.target.parentElement.querySelector('.ride-name');
+                    const rideDistance = event.target.parentElement.querySelector('.ride-distance');
+                    const rideDate = event.target.parentElement.querySelector('.ride-date');
+                    const editForm = createEditForm(rideId, rideName, rideDistance, rideDate);
+                    event.target.parentElement.appendChild(editForm);
+                    event.target.style.display = 'none';
+                });
             });
         } else {
             ridesUl.innerHTML = '<p>No rides to display</p>';
@@ -441,6 +479,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
         totalRideDistance.textContent = `Total Distance: ${totalDistance.toFixed(2)} km`;
     };
+
+    const createEditForm = (rideId, rideName, rideDistance, rideDate) => {
+
+    const editForm = document.createElement('form');
+    editForm.classList.add('box', 'edit-form', 'notification');
+
+    const nameValue = rideName ? rideName.textContent : '';
+    const distanceValue = rideDistance ? rideDistance.textContent : '';
+    const dateValue = rideDate ? rideDate.textContent : '';
+
+    editForm.innerHTML = `
+        <input type="hidden" name="rideId" value="${rideId}" />
+        <div class="field">
+            <label class="label">Ride Name</label>
+            <div class="control">
+                <input class="input" type="text" name="editRideName" value="${nameValue}" required />
+            </div>
+        </div>
+        <div class="field">
+            <label class="label">Distance (km)</label>
+            <div class="control">
+                <input class="input" type="number" name="editRideDistance" value="${distanceValue}" min="0" step="0.01" required />
+            </div>
+        </div>
+        <div class="field">
+            <label class="label">Date</label>
+            <div class="control">
+                <input class="input" type="date" name="editRideDate" value="${dateValue}" required />
+            </div>
+        </div>
+        <div class="buttons">
+            <button class="button is-link" type="submit">Save</button>
+            <button class="button is-warning cancel-btn" type="button">Cancel</button>
+        </div>
+    `;
+
+    editForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const updatedRide = {
+            ride_id: editForm.rideId.value,
+            name: editForm.editRideName.value,
+            distance: parseFloat(editForm.editRideDistance.value),
+            date: editForm.editRideDate.value,
+            username: '<?php echo $_SESSION['username']; ?>'
+        };
+        try {
+            await updateRide(updatedRide);
+            await displayRides('<?php echo $_SESSION['username']; ?>');
+            await fetchDataAndCreateChart();
+        } catch (error) {
+            emptyData.style.display = 'block';
+            emptyData.innerHTML = `<p>No Changes</p>`
+            setTimeout(() => {
+                emptyData.style.display = 'none';
+            }, 3000);
+            console.log('Error updating ride');
+        }
+    });
+
+    editForm.querySelector('.cancel-btn').addEventListener('click', () => {
+        editForm.remove();
+        document.querySelector(`button[data-id="${rideId}"]`).style.display = 'inline';
+    });
+
+    return editForm;
+};
+
 
     const prevPageHandler = async () => {
         if (currentPage > 1) {
